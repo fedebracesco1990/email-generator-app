@@ -1,0 +1,16 @@
+// Windsurf Rules
+Code in English
+Comments in English
+Chat with user on Spanish
+
+// General Guidelines
+Always use Markdown for documentation and README files
+Maintain the existing structure of the README.md file
+
+// Project Guidelines
+The project is a Next.js application that allows users to build emails from HTML templates.
+
+// Start Guidelines
+Use the files inside the Email directory as templates.
+
+// 
