@@ -10,7 +10,6 @@
 
   width: 100%;
   min-height: 100vh;
-  padding: 20px;
   font-family: var(--font-geist-sans);
   color: var(--text-color);
 }
@@ -52,6 +51,9 @@
   flex-wrap: wrap;
   gap: 30px;
   margin-top: 20px;
+  margin-inline: 20px;
+  min-height: calc(100vh - 150px); /* Altura mínima: 100vh menos altura aproximada del header y padding */
+  height: auto; /* Crece si hay más contenido */
 }
 
 .controlsPanel {
@@ -70,6 +72,9 @@
   padding: 20px;
   border-radius: var(--border-radius);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 170px); /* Altura del viewport menos espacio para header y márgenes */
 }
 
 .controlSection {
@@ -89,7 +94,7 @@
   border-radius: var(--border-radius);
   border: 1px solid var(--gray);
   background-color: white;
-  color: var(--text-color);
+  color: var(--light-gray);
   font-size: 1rem;
   margin-bottom: 10px;
 }
@@ -154,8 +159,8 @@
   background-color: white;
   border: 1px solid var(--gray);
   padding: 20px;
-  height: 600px;
-  overflow-y: auto;
+  flex: 1; /* Toma todo el espacio disponible */
+  overflow-y: auto; /* Mantiene scroll si el contenido es mayor */
   border-radius: var(--border-radius);
   position: relative;
 }
