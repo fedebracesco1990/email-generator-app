@@ -52,7 +52,9 @@
   gap: 30px;
   margin-top: 20px;
   margin-inline: 20px;
-  min-height: calc(100vh - 150px); /* Altura mínima: 100vh menos altura aproximada del header y padding */
+  min-height: calc(
+    100vh - 150px
+  ); /* Altura mínima: 100vh menos altura aproximada del header y padding */
   height: auto; /* Crece si hay más contenido */
 }
 
@@ -63,6 +65,8 @@
   padding: 20px;
   border-radius: var(--border-radius);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: calc(100vh - 170px);
+  overflow-y: auto;
 }
 
 .previewPanel {
@@ -74,7 +78,9 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 170px); /* Altura del viewport menos espacio para header y márgenes */
+  height: calc(
+    100vh - 170px
+  ); /* Altura del viewport menos espacio para header y márgenes */
 }
 
 .controlSection {
@@ -111,7 +117,8 @@
   margin-bottom: 0;
 }
 
-.addButton, .removeButton {
+.addButton,
+.removeButton {
   padding: 10px 15px;
   border: none;
   border-radius: var(--border-radius);
@@ -241,8 +248,9 @@
   .builderContainer {
     flex-direction: column;
   }
-  
-  .controlsPanel, .previewPanel {
+
+  .controlsPanel,
+  .previewPanel {
     min-width: 100%;
   }
 }
@@ -256,7 +264,8 @@
   border: 1px solid var(--gray);
 }
 
-.variablesSection h3, .variablesSection h4 {
+.variablesSection h3,
+.variablesSection h4 {
   font-size: 1rem;
   margin-top: 0;
   margin-bottom: 12px;
