@@ -59,6 +59,8 @@
 .controlsPanel {
   flex: 1;
   min-width: 300px;
+  height: calc(100vh - 170px);
+  overflow-y: auto;
   background-color: var(--light-gray);
   padding: 20px;
   border-radius: var(--border-radius);
@@ -274,21 +276,57 @@
   color: var(--text-color);
 }
 
-/* Estilos para pares de botones y enlaces */
-.buttonPairContainer {
-  padding: 16px;
-  margin-bottom: 20px;
+/* Estilos para elementos relacionados en secuencia */
+.pairStart {
+  padding-bottom: 4px;
+  position: relative;
+  border-radius: 8px 8px 0 0;
   border: 1px solid var(--gray);
-  border-radius: 8px;
-  background-color: rgba(220, 220, 220, 0.1);
+  border-bottom: none;
+  padding: 12px;
+  padding-bottom: 16px;
+  background-color: rgba(220, 220, 220, 0.05);
 }
 
-.pairLabel {
-  font-weight: 600;
-  margin-bottom: 12px;
+.pairEnd {
+  padding-top: 4px;
+  margin-top: 0 !important;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--gray);
+  border-top: none;
+  padding: 12px;
+  padding-top: 16px;
+  background-color: rgba(220, 220, 220, 0.05);
+}
+
+.pairConnector {
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 20px;
+  height: 2px;
+  background-color: var(--primary-color);
+  transform: translateX(-50%);
+}
+
+/* Estilos para los inputs de título */
+.titleInput {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-left: 3px solid var(--primary-color);
+}
+
+.titleInput label {
   color: var(--primary-color);
-  border-bottom: 1px solid var(--gray);
-  padding-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Estilos para textareas */
+.textareaInput {
+  height: auto;
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+  padding: 8px 12px;
 }
 
 .variableInput .input {

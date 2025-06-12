@@ -2,20 +2,29 @@ import React from 'react';
 import styles from '../app/page.module.css';
 
 // Componente para mostrar variables de imagen con vista previa
-const ImageVariableInput = ({ id, value, onChange, placeholder }) => (
-  <div className={styles.imageUrlContainer}>
-    <input
-      id={id}
-      type="text"
-      value={value || ''}
-      onChange={onChange}
-      placeholder={placeholder || 'Ingresa URL de la imagen'}
-      className={styles.input}
-    />
-    {value && (
+const ImageVariableInput = ({ id, value, onChange, placeholder }) => {
+  // Asegurarnos de que value sea siempre una cadena de texto
+  const safeValue = typeof value === 'string' ? value : (value ? String(value) : '');
+  
+  // Función para manejar el cambio asegurando que siempre devolveremos una cadena
+  const handleSafeChange = (e) => {
+    onChange(e.target.value);
+  };
+  
+  return (
+    <div className={styles.imageUrlContainer}>
+      <input
+        id={id}
+        type="text"
+        value={safeValue}
+        onChange={handleSafeChange}
+        placeholder={placeholder || 'Ingresa URL de la imagen'}
+        className={styles.input}
+      />
+    {safeValue && (
       <div className={styles.imagePreview}>
         <img 
-          src={value}
+          src={safeValue}
           alt="Vista previa"
           className={styles.previewImage}
           onError={(e) => {
@@ -26,55 +35,83 @@ const ImageVariableInput = ({ id, value, onChange, placeholder }) => (
       </div>
     )}
   </div>
-);
+  );
+};
 
 // Componente para mostrar variables de link con botón de prueba
-const LinkVariableInput = ({ id, value, onChange, placeholder }) => (
-  <div className={styles.linkUrlContainer}>
+const LinkVariableInput = ({ id, value, onChange, placeholder }) => {
+  // Asegurarnos de que value sea siempre una cadena de texto
+  const safeValue = typeof value === 'string' ? value : (value ? String(value) : '');
+  
+  // Función para manejar el cambio asegurando que siempre devolveremos una cadena
+  const handleSafeChange = (e) => {
+    onChange(e.target.value);
+  };
+  
+  return (
+    <div className={styles.linkUrlContainer}>
+      <input
+        id={id}
+        type="text"
+        value={safeValue}
+        onChange={handleSafeChange}
+        placeholder={placeholder || 'Ingresa URL del enlace'}
+        className={styles.input}
+      />
+      {safeValue && (
+        <a 
+          href={safeValue} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className={styles.testLink}
+        >
+          Probar
+        </a>
+      )}
+    </div>
+  );
+};
+
+// Component for text variables display
+const TextVariableInput = ({ id, value, onChange, placeholder, multiline = false }) => {
+  // Handle change for both input and textarea
+  const handleChange = (e) => {
+    onChange(e.target.value);
+  };
+  
+  return multiline ? (
+    <textarea
+      id={id}
+      value={value || ''}
+      onChange={handleChange}
+      placeholder={placeholder || 'Enter text'}
+      className={`${styles.input} ${styles.textareaInput}`}
+      rows={3}
+    />
+  ) : (
     <input
       id={id}
       type="text"
       value={value || ''}
-      onChange={onChange}
-      placeholder={placeholder || 'Ingresa URL del enlace'}
+      onChange={handleChange}
+      placeholder={placeholder || 'Enter text'}
       className={styles.input}
     />
-    {value && (
-      <a 
-        href={value} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className={styles.testLink}
-      >
-        Probar
-      </a>
-    )}
-  </div>
-);
-
-// Componente para mostrar variables de texto
-const TextVariableInput = ({ id, value, onChange, placeholder }) => (
-  <input
-    id={id}
-    type="text"
-    value={value || ''}
-    onChange={onChange}
-    placeholder={placeholder || 'Ingresa texto'}
-    className={styles.input}
-  />
-);
+  );
+};
 
 const SectionEditor = ({ 
   selectedSections, 
   availableSections, 
   addSection, 
   removeSection, 
-  changeSection, // Add the changeSection prop
+  changeSection, 
   sectionVariables, 
   variableValues, 
   setVariableValues, 
   isImageVariable,
-  categorizedVariables
+  categorizedVariables,
+  categorizeVariable // Añadimos la prop categorizeVariable
 }) => {
   return (
     <div className={styles.controlSection}>
@@ -108,205 +145,147 @@ const SectionEditor = ({
             <div className={styles.variablesSection}>
               <h4>Variables de la sección {index + 1}</h4>
               
-              {/* Variables categorizadas si están disponibles */}
+              {/* Variables ordenadas según aparecen en el template */}
               {categorizedVariables?.section?.[section] ? (
                 <>
-                  {/* Pares de Enlaces y Botones (agrupados) */}
+                  {/* Mostrar todas las variables en el orden en que aparecen en el template */}
                   {(() => {
-                    const linkPairs = [];
-                    const buttonPairs = [];
+                    // Obtener todas las variables para esta sección
+                    const allVariables = sectionVariables[section] || [];
                     
-                    categorizedVariables.section[section].links.forEach(variable => {
-                      if (variable.includes('LINK_PAIR_')) {
-                        linkPairs.push(variable);
-                      }
-                    });
-                    
-                    categorizedVariables.section[section].texts.forEach(variable => {
-                      if (variable.includes('BUTTON_PAIR_')) {
-                        buttonPairs.push(variable);
-                      }
-                    });
-                    
-                    if (linkPairs.length > 0 || buttonPairs.length > 0) {
+                    if (allVariables.length > 0) {
                       return (
                         <div className={styles.variableCategory}>
-                          <h5>Botones</h5>
-                          {linkPairs.map((linkVar, i) => {
-                            const pairNumber = linkVar.split('_').pop(); 
-                            const buttonVar = `BUTTON_PAIR_${pairNumber}`;
+                          {allVariables.map(variable => {
+                            const variableKey = `section_${section}_${index}_${variable}`;
+                            const variableValue = variableValues[variableKey] || '';
+                            const variableType = categorizeVariable(variable);
                             
-                            return (
-                              <div key={`${section}_${index}_pair_${pairNumber}`} className={styles.buttonPairContainer}>
-                                <div className={styles.pairLabel}>Botón {i+1}</div>
-                                
-                                <div className={styles.variableInput}>
-                                  <label htmlFor={`section_${section}_${index}_${linkVar}`}>URL del enlace:</label>
-                                  <LinkVariableInput 
-                                    id={`section_${section}_${index}_${linkVar}`}
-                                    value={variableValues[`section_${section}_${index}_${linkVar}`]}
-                                    placeholder="Ingresa URL del enlace"
-                                    onChange={(e) => {
-                                      const newValues = {
-                                        ...variableValues,
-                                        [`section_${section}_${index}_${linkVar}`]: e.target.value
-                                      };
-                                      setVariableValues(newValues);
-                                      clearTimeout(window._sectionUpdateTimer);
-                                      window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                                    }}
-                                  />
-                                </div>
-                                
-                                <div className={styles.variableInput}>
-                                  <label htmlFor={`section_${section}_${index}_${buttonVar}`}>Texto del botón:</label>
-                                  <TextVariableInput 
-                                    id={`section_${section}_${index}_${buttonVar}`}
-                                    value={variableValues[`section_${section}_${index}_${buttonVar}`]}
-                                    placeholder="Texto para mostrar en el botón"
-                                    onChange={(e) => {
-                                      const newValues = {
-                                        ...variableValues,
-                                        [`section_${section}_${index}_${buttonVar}`]: e.target.value
-                                      };
-                                      setVariableValues(newValues);
-                                      clearTimeout(window._sectionUpdateTimer);
-                                      window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  
-                  {/* Enlaces que no son parte de pares */}
-                  {(() => {
-                    const singleLinks = categorizedVariables.section[section].links.filter(
-                      variable => !variable.includes('LINK_PAIR_')
-                    );
-                    
-                    if (singleLinks.length > 0) {
-                      return (
-                        <div className={styles.variableCategory}>
-                          <h5>Enlaces</h5>
-                          {singleLinks.map(variable => (
-                            <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                              <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                              <LinkVariableInput 
-                                id={`section_${section}_${index}_${variable}`}
-                                value={variableValues[`section_${section}_${index}_${variable}`]}
-                                placeholder="Ingresa URL del enlace"
-                                onChange={(e) => {
-                                  const newValues = {
-                                    ...variableValues,
-                                    [`section_${section}_${index}_${variable}`]: e.target.value
-                                  };
-                                  setVariableValues(newValues);
-                                  clearTimeout(window._sectionUpdateTimer);
-                                  window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                                }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  
-                  {/* Imágenes */}
-                  {categorizedVariables.section[section].images.length > 0 && (
-                    <div className={styles.variableCategory}>
-                      <h5>Imágenes</h5>
-                      {categorizedVariables.section[section].images.map(variable => (
-                        <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                          <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                          <ImageVariableInput 
-                            id={`section_${section}_${index}_${variable}`}
-                            value={variableValues[`section_${section}_${index}_${variable}`]}
-                            placeholder="Ingresa URL de la imagen"
-                            onChange={(e) => {
+                            // Función común de actualización para todos los campos
+                            const handleChange = (newValue) => {
                               const newValues = {
                                 ...variableValues,
-                                [`section_${section}_${index}_${variable}`]: e.target.value
+                                [variableKey]: newValue
                               };
                               setVariableValues(newValues);
                               clearTimeout(window._sectionUpdateTimer);
                               window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Atributos */}
-                  {(() => {
-                    const filteredAttributes = categorizedVariables.section[section].attributes;
-                    
-                    if (filteredAttributes.length > 0) {
-                      return (
-                        <div className={styles.variableCategory}>
-                          <h5>Atributos</h5>
-                          {filteredAttributes.map(variable => (
-                            <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                              <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                              <TextVariableInput 
-                                id={`section_${section}_${index}_${variable}`}
-                                value={variableValues[`section_${section}_${index}_${variable}`]}
-                                placeholder={`Atributo para ${variable}`}
-                                onChange={(e) => {
-                                  const newValues = {
-                                    ...variableValues,
-                                    [`section_${section}_${index}_${variable}`]: e.target.value
-                                  };
-                                  setVariableValues(newValues);
-                                  clearTimeout(window._sectionUpdateTimer);
-                                  window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                                }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  
-                  {/* Textos regulares (sin botones) */}
-                  {(() => {
-                    const regularTexts = categorizedVariables.section[section].texts.filter(
-                      variable => !variable.includes('BUTTON_PAIR_')
-                    );
-                    
-                    if (regularTexts.length > 0) {
-                      return (
-                        <div className={styles.variableCategory}>
-                          <h5>Textos</h5>
-                          {regularTexts.map(variable => (
-                            <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                              <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                              <TextVariableInput 
-                                id={`section_${section}_${index}_${variable}`}
-                                value={variableValues[`section_${section}_${index}_${variable}`]}
-                                placeholder={`Texto para ${variable}`}
-                                onChange={(e) => {
-                                  const newValues = {
-                                    ...variableValues,
-                                    [`section_${section}_${index}_${variable}`]: e.target.value
-                                  };
-                                  setVariableValues(newValues);
-                                  clearTimeout(window._sectionUpdateTimer);
-                                  window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                                }}
-                              />
-                            </div>
-                          ))}
+                            };
+                            
+                            // Determinar si es parte de un par
+                            const isPart = variable.includes('PAIR_');
+                            const pairNumber = isPart ? variable.split('_').pop() : null;
+                            const isStart = isPart && variable.includes('LINK_PAIR_');
+                            const isEnd = isPart && variable.includes('BUTTON_PAIR_');
+                            
+                            // Determinar si es un título para aplicar estilos
+                            const isTitle = variableType === 'title' || variable.includes('TITLE');
+                            
+                            // Obtener etiqueta amigable según tipo de variable
+                            const getReadableLabel = () => {
+                              // Determinar la etiqueta según el tipo y contenido variable
+                              if (variableType === 'title' || isTitle) return 'Título principal';
+                              
+                              // Mejorar etiquetas para párrafos mostrando el número
+                              if (variable.startsWith('PARAGRAPH_')) {
+                                const paragraphNum = variable.split('_')[1];
+                                return `Párrafo ${paragraphNum || ''}`;
+                              }
+                              
+                              if (variableType === 'text' || variable.includes('TEXT')) {
+                                // Detectar si es un párrafo largo o una etiqueta corta
+                                const textContent = variableValue || '';
+                                if (textContent.length > 60) return 'Párrafo de texto';
+                                if (textContent.length < 20) return 'Etiqueta';
+                                return 'Texto';
+                              }
+                              if (variableType === 'image' || variable.includes('IMG_SRC')) {
+                                // Añadir número de imagen para multiples imagenes
+                                const imgNum = variable.split('_')[2];
+                                return `URL de imagen ${imgNum || ''}`;
+                              }
+                              if (variableType === 'attribute' || variable.includes('IMG_ALT')) return 'Texto alternativo';
+                              if (isStart) return `URL del enlace ${pairNumber}`;
+                              if (isEnd) return `Texto del botón ${pairNumber}`;
+                              
+                              // Devolver versión legible del nombre variable en español
+                              return variable.replace(/_/g, ' ').toLowerCase()
+                                .split(' ')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+                            };
+                            
+                            return (
+                              <div 
+                                key={variableKey} 
+                                className={`${styles.variableInput} ${
+                                  isTitle ? styles.titleInput : ''
+                                } ${
+                                  isStart ? styles.pairStart : 
+                                  isEnd ? styles.pairEnd : ''
+                                }`}
+                              >
+                                {/* Añadir conector visual entre elementos del par */}
+                                {isStart && <div className={styles.pairConnector} />}
+
+                                <label>{getReadableLabel()}</label>
+                                
+                                {variableType === 'image' && (
+                                  <ImageVariableInput 
+                                    id={variableKey}
+                                    value={variableValue} 
+                                    onChange={handleChange}
+                                  />
+                                )}
+                                
+                                {variableType === 'link' && (
+                                  <LinkVariableInput 
+                                    id={variableKey}
+                                    value={variableValue} 
+                                    onChange={handleChange}
+                                  />
+                                )}
+                                
+                                {variableType === 'title' && (
+                                  <TextVariableInput 
+                                    id={variableKey}
+                                    value={variableValue} 
+                                    onChange={handleChange}
+                                    multiline={true}
+                                    placeholder="Escribe el título principal"
+                                  />
+                                )}
+                                
+                                {variableType === 'text' && (
+                                  <TextVariableInput 
+                                    id={variableKey}
+                                    value={variableValue} 
+                                    onChange={handleChange}
+                                    multiline={variableValue.length > 40}
+                                    placeholder={`Escribe el texto aquí`}
+                                  />
+                                )}
+                                
+                                {variableType === 'attribute' && (
+                                  <TextVariableInput 
+                                    id={variableKey}
+                                    value={variableValue} 
+                                    onChange={handleChange}
+                                  />
+                                )}
+                                
+                                {/* Manejo específico para el texto del botón */}
+                                {variableType === 'button' && (
+                                  <TextVariableInput 
+                                    id={variableKey}
+                                    value={variableValue} 
+                                    onChange={handleChange}
+                                    placeholder="Escribe el texto del botón"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     }
