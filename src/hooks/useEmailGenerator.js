@@ -25,92 +25,111 @@ export const useEmailGenerator = (templateHook, variableHook) => {
     let result = template;
 
     if (type === 'section') {
-      // For sections: replace real content extracted from HTML
-
-      // 1. Replace image URLs
+      // For sections: replace content based on data-variable attributes
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(result, 'text/html');
+      
+      // Track counters for each variable type
+      let labelCounter = 1;
+      let titleCounter = 1;
       let imgCounter = 1;
-      result = result.replace(/src="([^"]+)"/g, (match, originalSrc) => {
-        const varKey = `section_${name}_${sectionIndex}_IMG_SRC_${imgCounter}`;
-        imgCounter++;
-        const newSrc = variableValues[varKey] || originalSrc;
-        return `src="${newSrc}"`;
-      });
-
-      // 2. Replace image alt texts
-      let altCounter = 1;
-      result = result.replace(/alt="([^"]+)"/g, (match, originalAlt) => {
-        const varKey = `section_${name}_${sectionIndex}_IMG_ALT_${altCounter}`;
-        altCounter++;
-        const newAlt = variableValues[varKey] || originalAlt;
-        return `alt="${newAlt}"`;
-      });
-
-      // 3. Replace link and button text pairs
-      let pairCounter = 1;
-      result = result.replace(/<a([^>]*)href="([^"]+)"([^>]*)>\s*([^<]+?)\s*<\/a>/g,
-        (match, attrsBefore, originalHref, attrsAfter, originalButtonText) => {
-          // Only process real links with meaningful text
-          if (originalHref && originalHref !== '#' && originalHref !== '') {
-            const trimmedText = originalButtonText.trim();
-
-            if (trimmedText.length > 2) {
-              // Keys for URL and button text
-              const linkKey = `section_${name}_${sectionIndex}_LINK_PAIR_${pairCounter}`;
-              const buttonKey = `section_${name}_${sectionIndex}_BUTTON_PAIR_${pairCounter}`;
-              pairCounter++;
-
-              // Get edited values or use originals
-              const newHref = variableValues[linkKey] || originalHref;
-              const newButtonText = variableValues[buttonKey] || trimmedText;
-
-              return `<a${attrsBefore}href="${newHref}"${attrsAfter}>${newButtonText}</a>`;
-            }
-          }
-          return match; // Keep unchanged if doesn't meet criteria
-        }
-      );
-
-      // 4. Replace single links (without associated button text)
+      let paragraphCounter = 1;
+      let buttonCounter = 1;
       let linkCounter = 1;
-      // Use helper function to replace only href that are not in pairs
-      const replaceSingleLinks = (html) => {
-        return html.replace(/href="([^"#][^"]*)"/g, (match, originalHref) => {
-          // Check that this href is not within an already processed pair
-          let isPaired = false;
-          html.replace(/<a[^>]*href="([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g, (m, pairedHref) => {
-            if (pairedHref === originalHref) {
-              isPaired = true;
-            }
-            return m;
-          });
 
-          if (!isPaired && originalHref && originalHref !== '#' && originalHref !== '') {
-            const varKey = `section_${name}_${sectionIndex}_LINK_${linkCounter}`;
-            linkCounter++;
-            const newHref = variableValues[varKey] || originalHref;
-            return `href="${newHref}"`;
-          }
-          return match; // Keep anchors unchanged
-        });
-      };
-
-      result = replaceSingleLinks(result);
-
-      // 5. Replace texts within td cells
-      let textCounter = 1;
-      result = result.replace(/<td([^>]*)>\s*([^<]{4,})\s*<\/td>/g, (match, attrs, originalText) => {
-        // Only try to replace meaningful texts (more than 3 characters)
-        const trimmedText = originalText.trim();
-        if (trimmedText.length > 3 && !trimmedText.startsWith('http')) {
-          const varKey = `section_${name}_${sectionIndex}_TEXT_${textCounter}`;
-          textCounter++;
-          const newText = variableValues[varKey] || trimmedText;
-          return `<td${attrs}>${newText}</td>`;
+      // Process LABEL elements
+      const labels = doc.querySelectorAll('[data-variable="LABEL"]');
+      labels.forEach((element) => {
+        const varKey = `section_${name}_${sectionIndex}_LABEL_${labelCounter}`;
+        const newValue = variableValues[varKey];
+        if (newValue !== undefined) {
+          element.textContent = newValue;
         }
-        return match; // Return original if doesn't meet criteria
+        labelCounter++;
       });
 
-      return result;
+      // Process TITLE elements
+      const titles = doc.querySelectorAll('[data-variable="TITLE"]');
+      titles.forEach((element) => {
+        const varKey = `section_${name}_${sectionIndex}_TITLE_${titleCounter}`;
+        const newValue = variableValues[varKey];
+        if (newValue !== undefined) {
+          element.innerHTML = newValue;
+        }
+        titleCounter++;
+      });
+
+      // Process IMG elements
+      const images = doc.querySelectorAll('[data-variable="IMG"]');
+      images.forEach((element) => {
+        // Handle IMG_SRC
+        const srcKey = `section_${name}_${sectionIndex}_IMG_SRC_${imgCounter}`;
+        const newSrc = variableValues[srcKey];
+        if (newSrc !== undefined) {
+          element.setAttribute('src', newSrc);
+        }
+
+        // Handle IMG_ALT
+        const altKey = `section_${name}_${sectionIndex}_IMG_ALT_${imgCounter}`;
+        const newAlt = variableValues[altKey];
+        if (newAlt !== undefined) {
+          element.setAttribute('alt', newAlt);
+        }
+
+        // Handle IMG_TITLE
+        const titleKey = `section_${name}_${sectionIndex}_IMG_TITLE_${imgCounter}`;
+        const newTitle = variableValues[titleKey];
+        if (newTitle !== undefined) {
+          element.setAttribute('title', newTitle);
+        }
+
+        imgCounter++;
+      });
+
+      // Process PARAGRAPH elements
+      const paragraphs = doc.querySelectorAll('[data-variable="PARAGRAPH"]');
+      paragraphs.forEach((element) => {
+        const varKey = `section_${name}_${sectionIndex}_PARAGRAPH_${paragraphCounter}`;
+        const newValue = variableValues[varKey];
+        if (newValue !== undefined) {
+          element.textContent = newValue;
+        }
+        paragraphCounter++;
+      });
+
+      // Process BUTTON elements
+      const buttons = doc.querySelectorAll('[data-variable="BUTTON"]');
+      buttons.forEach((element) => {
+        // Handle BUTTON_HREF
+        const hrefKey = `section_${name}_${sectionIndex}_BUTTON_HREF_${buttonCounter}`;
+        const newHref = variableValues[hrefKey];
+        if (newHref !== undefined) {
+          element.setAttribute('href', newHref);
+        }
+
+        // Handle BUTTON_TEXT
+        const textKey = `section_${name}_${sectionIndex}_BUTTON_TEXT_${buttonCounter}`;
+        const newText = variableValues[textKey];
+        if (newText !== undefined) {
+          element.textContent = newText;
+        }
+
+        buttonCounter++;
+      });
+
+      // Process LINK elements
+      const links = doc.querySelectorAll('[data-variable="LINK"]');
+      links.forEach((element) => {
+        const hrefKey = `section_${name}_${sectionIndex}_LINK_HREF_${linkCounter}`;
+        const newHref = variableValues[hrefKey];
+        if (newHref !== undefined) {
+          element.setAttribute('href', newHref);
+        }
+        linkCounter++;
+      });
+
+      // Return the modified HTML
+      return doc.documentElement.innerHTML;
     } else {
       // For headers and footers: handle traditional %%VARIABLE%% variables
 
