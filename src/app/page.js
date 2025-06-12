@@ -38,12 +38,14 @@ export default function Home() {
   // Function to check variable type
   const categorizeVariable = useCallback((variableName) => {
     // Clasificar variables según su nombre
-    if (variableName.includes('SRC') || variableName.includes('IMG')) {
+    if (variableName.includes('SRC') || variableName.includes('IMG_SRC')) {
       return 'image';
     } else if (variableName.includes('LINK') || variableName.includes('URL') || variableName.includes('HREF')) {
       return 'link';
-    } else if (variableName.includes('ALT') || variableName.includes('TITLE')) {
+    } else if (variableName.includes('ALT') || variableName.includes('TITLE') || variableName.includes('IMG_ALT')) {
       return 'attribute';
+    } else if (variableName.includes('BUTTON')) {
+      return 'text'; // Tratamos los textos de botones como texto normal
     } else {
       return 'text';
     }
@@ -85,18 +87,144 @@ export default function Home() {
   }, [categorizeVariable]);
 
   // Function to extract variables from template content
-  const extractVariables = useCallback((content) => {
-    const regex = /%%([A-Z_]+)%%/g;
-    const variables = [];
-    let match;
-    
-    while ((match = regex.exec(content)) !== null) {
-      if (!variables.includes(match[1])) {
-        variables.push(match[1]);
+  const extractVariables = useCallback((content, type = null) => {
+    if (type === 'sections') {
+      // Para secciones, extraemos contenido editable manteniendo el orden de aparición
+      const variables = [];
+      const orderedElementsMap = new Map(); // Mapa para almacenar elementos y sus posiciones
+      
+      // Analizamos el HTML para detectar elementos en su orden de aparición
+      
+      // 1. Detectar botones y enlaces (con posición)
+      const linkButtonRegex = /<a[^>]*href="([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g;
+      let linkButtonMatch;
+      let pairCounter = 1;
+      
+      while ((linkButtonMatch = linkButtonRegex.exec(content)) !== null) {
+        const href = linkButtonMatch[1];
+        const buttonText = linkButtonMatch[2].trim();
+        const position = linkButtonMatch.index;
+        
+        if (href !== '#' && href !== '' && buttonText.length > 2) {
+          // Guardar posición para cada par de enlace+botón
+          orderedElementsMap.set(`LINK_PAIR_${pairCounter}`, {
+            type: 'link_pair',
+            position: position,
+            value: href
+          });
+          
+          orderedElementsMap.set(`BUTTON_PAIR_${pairCounter}`, {
+            type: 'button_pair',
+            position: position + 1, // Lo colocamos justo después del enlace
+            value: buttonText
+          });
+          
+          pairCounter++;
+        }
       }
+      
+      // 2. Detectar imágenes y atributos
+      const imgRegex = /<img([^>]*)>/g;
+      let imgMatch;
+      let imgCounter = 1;
+      
+      while ((imgMatch = imgRegex.exec(content)) !== null) {
+        const imgTag = imgMatch[1];
+        const position = imgMatch.index;
+        
+        // Extraer src
+        const srcMatch = /src="([^"]+)"/.exec(imgTag);
+        if (srcMatch) {
+          orderedElementsMap.set(`IMG_SRC_${imgCounter}`, {
+            type: 'image',
+            position: position,
+            value: srcMatch[1]
+          });
+        }
+        
+        // Extraer alt
+        const altMatch = /alt="([^"]+)"/.exec(imgTag);
+        if (altMatch) {
+          orderedElementsMap.set(`IMG_ALT_${imgCounter}`, {
+            type: 'attribute',
+            position: position + 1, // Justo después del src
+            value: altMatch[1]
+          });
+        }
+        
+        imgCounter++;
+      }
+      
+      // 3. Detectar textos en celdas td
+      const textRegex = /<td[^>]*>\s*([^<]{4,})\s*<\/td>/g;
+      let textMatch;
+      let textCounter = 1;
+      
+      while ((textMatch = textRegex.exec(content)) !== null) {
+        const text = textMatch[1].trim();
+        const position = textMatch.index;
+        
+        if (text.length > 3 && !text.startsWith('http')) {
+          orderedElementsMap.set(`TEXT_${textCounter}`, {
+            type: 'text',
+            position: position,
+            value: text
+          });
+          textCounter++;
+        }
+      }
+      
+      // 4. Detectar enlaces sueltos
+      const hrefRegex = /href="([^"#][^"]*)"/g;
+      let hrefMatch;
+      let linkCounter = 1;
+      
+      while ((hrefMatch = hrefRegex.exec(content)) !== null) {
+        const href = hrefMatch[1];
+        const position = hrefMatch.index;
+        
+        // Verificar que no es parte de un par ya detectado
+        let isDuplicate = false;
+        orderedElementsMap.forEach((value, key) => {
+          if (key.startsWith('LINK_PAIR_') && value.value === href) {
+            isDuplicate = true;
+          }
+        });
+        
+        if (!isDuplicate && href !== '' && href !== '#') {
+          orderedElementsMap.set(`LINK_${linkCounter}`, {
+            type: 'link',
+            position: position,
+            value: href
+          });
+          linkCounter++;
+        }
+      }
+      
+      // Ordenar los elementos por posición en el documento
+      const sortedElements = Array.from(orderedElementsMap.entries()).
+        sort((a, b) => a[1].position - b[1].position);
+      
+      // Crear lista de variables ordenadas
+      sortedElements.forEach(([variable]) => {
+        variables.push(variable);
+      });
+      
+      return variables;
+    } else {
+      // Para headers y footers, usar el método original
+      const regex = /%%([A-Z_]+)%%/g;
+      const variables = [];
+      let match;
+      
+      while ((match = regex.exec(content)) !== null) {
+        if (!variables.includes(match[1])) {
+          variables.push(match[1]);
+        }
+      }
+      
+      return variables;
     }
-    
-    return variables;
   }, []);
   
   // Function to fetch an HTML template
@@ -110,7 +238,7 @@ export default function Home() {
       throw new Error(`No se pudo cargar la plantilla: ${filePath}. Status: ${response.status}`);
     }
     const content = await response.text();
-    const variables = extractVariables(content);
+    const variables = extractVariables(content, type);
     
     // Categorizar las variables por tipo para la UI
     const categorized = categorizeTemplateVariables(variables);
@@ -328,30 +456,115 @@ export default function Home() {
     // Crear una copia del template para trabajar
     let result = template;
     
-    // Primer paso: reemplazar variables de imágenes directamente en atributos src
-    result = result.replace(/<img([^>]*)src="%%([A-Z_]+)%%"([^>]*)>/g, (match, before, varName, after) => {
-      // Para secciones usamos el índice, para otros componentes no
-      const key = type === 'section' 
-        ? `${type}_${name}_${sectionIndex}_${varName}` 
-        : `${type}_${name}_${varName}`;
-      const imgUrl = variableValues[key] || '';
-      if (imgUrl) {
-        return `<img${before}src="${imgUrl}"${after}>`;
-      } else {
-        // Si no hay URL, poner una imagen transparente
-        return `<img${before}src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="${after}>`;
-      }
-    });
-    
-    // Segundo paso: reemplazar otras variables (textos, alt, etc.)
-    const regex = /%%([A-Z_]+)%%/g;
-    result = result.replace(regex, (match, variableName) => {
-      // Para secciones usamos el índice, para otros componentes no
-      const key = type === 'section' 
-        ? `${type}_${name}_${sectionIndex}_${variableName}` 
-        : `${type}_${name}_${variableName}`;
-      return variableValues[key] || '';
-    });
+    if (type === 'section') {
+      // Para secciones: reemplazamos contenido real extraido del HTML
+
+      // 1. Reemplazar URLs de imágenes
+      let imgCounter = 1;
+      result = result.replace(/src="([^"]+)"/g, (match, originalSrc) => {
+        const varKey = `section_${name}_${sectionIndex}_IMG_SRC_${imgCounter}`;
+        imgCounter++;
+        const newSrc = variableValues[varKey] || originalSrc;
+        return `src="${newSrc}"`;
+      });
+      
+      // 2. Reemplazar textos alternativos de imágenes
+      let altCounter = 1;
+      result = result.replace(/alt="([^"]+)"/g, (match, originalAlt) => {
+        const varKey = `section_${name}_${sectionIndex}_IMG_ALT_${altCounter}`;
+        altCounter++;
+        const newAlt = variableValues[varKey] || originalAlt;
+        return `alt="${newAlt}"`;
+      });
+      
+      // 3. Reemplazar pares de enlaces y textos de botones relacionados
+      let pairCounter = 1;
+      result = result.replace(/<a([^>]*)href="([^"]+)"([^>]*)>\s*([^<]+?)\s*<\/a>/g, 
+        (match, attrsBefore, originalHref, attrsAfter, originalButtonText) => {
+          // Solo procesar enlaces reales con texto significativo
+          if (originalHref && originalHref !== '#' && originalHref !== '') {
+            const trimmedText = originalButtonText.trim();
+            
+            if (trimmedText.length > 2) {
+              // Keys para URL y texto del botón
+              const linkKey = `section_${name}_${sectionIndex}_LINK_PAIR_${pairCounter}`;
+              const buttonKey = `section_${name}_${sectionIndex}_BUTTON_PAIR_${pairCounter}`;
+              pairCounter++;
+              
+              // Obtener valores editados o usar originales
+              const newHref = variableValues[linkKey] || originalHref;
+              const newButtonText = variableValues[buttonKey] || trimmedText;
+              
+              return `<a${attrsBefore}href="${newHref}"${attrsAfter}>${newButtonText}</a>`;
+            }
+          }
+          return match; // Mantener sin cambios si no cumple criterios
+        }
+      );
+      
+      // 4. Reemplazar enlaces sueltos (sin texto de botón asociado)
+      let linkCounter = 1;
+      // Usamos una función auxiliar para reemplazar solo los href que no están en pares
+      const replaceSingleLinks = (html) => {
+        return html.replace(/href="([^"#][^"]*)"/g, (match, originalHref) => {
+          // Verificar que este href no está dentro de un par ya procesado
+          let isPaired = false;
+          html.replace(/<a[^>]*href="([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g, (m, pairedHref) => {
+            if (pairedHref === originalHref) {
+              isPaired = true;
+            }
+            return m;
+          });
+          
+          if (!isPaired && originalHref && originalHref !== '#' && originalHref !== '') {
+            const varKey = `section_${name}_${sectionIndex}_LINK_${linkCounter}`;
+            linkCounter++;
+            const newHref = variableValues[varKey] || originalHref;
+            return `href="${newHref}"`;
+          }
+          return match; // Mantener anclajes sin cambios
+        });
+      };
+      
+      result = replaceSingleLinks(result);
+      
+      // 5. Reemplazar textos dentro de celdas td
+      let textCounter = 1;
+      result = result.replace(/<td([^>]*)>\s*([^<]{4,})\s*<\/td>/g, (match, attrs, originalText) => {
+        // Solo intentamos reemplazar textos significativos (más de 3 caracteres)
+        const trimmedText = originalText.trim();
+        if (trimmedText.length > 3 && !trimmedText.startsWith('http')) {
+          const varKey = `section_${name}_${sectionIndex}_TEXT_${textCounter}`;
+          textCounter++;
+          const newText = variableValues[varKey] || trimmedText;
+          return `<td${attrs}>${newText}</td>`;
+        }
+        return match; // Devolver original si no cumple criterios
+      });
+      
+      return result;
+    } else {
+      // Para headers y footers: manejamos las variables tradicionales %%VARIABLE%%
+
+      // Primer paso: reemplazar variables de imágenes directamente en atributos src
+      result = result.replace(/<img([^>]*)src="%%([A-Z_]+)%%"([^>]*)>/g, (match, before, varName, after) => {
+        const key = `${type}_${name}_${varName}`;
+        const imgUrl = variableValues[key] || '';
+        if (imgUrl) {
+          return `<img${before}src="${imgUrl}"${after}>`;
+        } else {
+          // Si no hay URL, poner una imagen transparente
+          return `<img${before}src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="${after}>`;
+        }
+      });
+      
+      // Segundo paso: reemplazar otras variables (textos, alt, etc.)
+      const regex = /%%([A-Z_]+)%%/g;
+      result = result.replace(regex, (match, variableName) => {
+        const key = `${type}_${name}_${variableName}`;
+        return variableValues[key] || '';
+      });
+    }
     
     return result;
   }, [variableValues]);

@@ -111,6 +111,114 @@ const SectionEditor = ({
               {/* Variables categorizadas si están disponibles */}
               {categorizedVariables?.section?.[section] ? (
                 <>
+                  {/* Pares de Enlaces y Botones (agrupados) */}
+                  {(() => {
+                    const linkPairs = [];
+                    const buttonPairs = [];
+                    
+                    categorizedVariables.section[section].links.forEach(variable => {
+                      if (variable.includes('LINK_PAIR_')) {
+                        linkPairs.push(variable);
+                      }
+                    });
+                    
+                    categorizedVariables.section[section].texts.forEach(variable => {
+                      if (variable.includes('BUTTON_PAIR_')) {
+                        buttonPairs.push(variable);
+                      }
+                    });
+                    
+                    if (linkPairs.length > 0 || buttonPairs.length > 0) {
+                      return (
+                        <div className={styles.variableCategory}>
+                          <h5>Botones</h5>
+                          {linkPairs.map((linkVar, i) => {
+                            const pairNumber = linkVar.split('_').pop(); 
+                            const buttonVar = `BUTTON_PAIR_${pairNumber}`;
+                            
+                            return (
+                              <div key={`${section}_${index}_pair_${pairNumber}`} className={styles.buttonPairContainer}>
+                                <div className={styles.pairLabel}>Botón {i+1}</div>
+                                
+                                <div className={styles.variableInput}>
+                                  <label htmlFor={`section_${section}_${index}_${linkVar}`}>URL del enlace:</label>
+                                  <LinkVariableInput 
+                                    id={`section_${section}_${index}_${linkVar}`}
+                                    value={variableValues[`section_${section}_${index}_${linkVar}`]}
+                                    placeholder="Ingresa URL del enlace"
+                                    onChange={(e) => {
+                                      const newValues = {
+                                        ...variableValues,
+                                        [`section_${section}_${index}_${linkVar}`]: e.target.value
+                                      };
+                                      setVariableValues(newValues);
+                                      clearTimeout(window._sectionUpdateTimer);
+                                      window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
+                                    }}
+                                  />
+                                </div>
+                                
+                                <div className={styles.variableInput}>
+                                  <label htmlFor={`section_${section}_${index}_${buttonVar}`}>Texto del botón:</label>
+                                  <TextVariableInput 
+                                    id={`section_${section}_${index}_${buttonVar}`}
+                                    value={variableValues[`section_${section}_${index}_${buttonVar}`]}
+                                    placeholder="Texto para mostrar en el botón"
+                                    onChange={(e) => {
+                                      const newValues = {
+                                        ...variableValues,
+                                        [`section_${section}_${index}_${buttonVar}`]: e.target.value
+                                      };
+                                      setVariableValues(newValues);
+                                      clearTimeout(window._sectionUpdateTimer);
+                                      window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  {/* Enlaces que no son parte de pares */}
+                  {(() => {
+                    const singleLinks = categorizedVariables.section[section].links.filter(
+                      variable => !variable.includes('LINK_PAIR_')
+                    );
+                    
+                    if (singleLinks.length > 0) {
+                      return (
+                        <div className={styles.variableCategory}>
+                          <h5>Enlaces</h5>
+                          {singleLinks.map(variable => (
+                            <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
+                              <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
+                              <LinkVariableInput 
+                                id={`section_${section}_${index}_${variable}`}
+                                value={variableValues[`section_${section}_${index}_${variable}`]}
+                                placeholder="Ingresa URL del enlace"
+                                onChange={(e) => {
+                                  const newValues = {
+                                    ...variableValues,
+                                    [`section_${section}_${index}_${variable}`]: e.target.value
+                                  };
+                                  setVariableValues(newValues);
+                                  clearTimeout(window._sectionUpdateTimer);
+                                  window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
                   {/* Imágenes */}
                   {categorizedVariables.section[section].images.length > 0 && (
                     <div className={styles.variableCategory}>
@@ -137,83 +245,73 @@ const SectionEditor = ({
                     </div>
                   )}
                   
-                  {/* Enlaces */}
-                  {categorizedVariables.section[section].links.length > 0 && (
-                    <div className={styles.variableCategory}>
-                      <h5>Enlaces</h5>
-                      {categorizedVariables.section[section].links.map(variable => (
-                        <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                          <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                          <LinkVariableInput 
-                            id={`section_${section}_${index}_${variable}`}
-                            value={variableValues[`section_${section}_${index}_${variable}`]}
-                            placeholder="Ingresa URL del enlace"
-                            onChange={(e) => {
-                              const newValues = {
-                                ...variableValues,
-                                [`section_${section}_${index}_${variable}`]: e.target.value
-                              };
-                              setVariableValues(newValues);
-                              clearTimeout(window._sectionUpdateTimer);
-                              window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
                   {/* Atributos */}
-                  {categorizedVariables.section[section].attributes.length > 0 && (
-                    <div className={styles.variableCategory}>
-                      <h5>Atributos</h5>
-                      {categorizedVariables.section[section].attributes.map(variable => (
-                        <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                          <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                          <TextVariableInput 
-                            id={`section_${section}_${index}_${variable}`}
-                            value={variableValues[`section_${section}_${index}_${variable}`]}
-                            placeholder={`Atributo para ${variable}`}
-                            onChange={(e) => {
-                              const newValues = {
-                                ...variableValues,
-                                [`section_${section}_${index}_${variable}`]: e.target.value
-                              };
-                              setVariableValues(newValues);
-                              clearTimeout(window._sectionUpdateTimer);
-                              window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                            }}
-                          />
+                  {(() => {
+                    const filteredAttributes = categorizedVariables.section[section].attributes;
+                    
+                    if (filteredAttributes.length > 0) {
+                      return (
+                        <div className={styles.variableCategory}>
+                          <h5>Atributos</h5>
+                          {filteredAttributes.map(variable => (
+                            <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
+                              <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
+                              <TextVariableInput 
+                                id={`section_${section}_${index}_${variable}`}
+                                value={variableValues[`section_${section}_${index}_${variable}`]}
+                                placeholder={`Atributo para ${variable}`}
+                                onChange={(e) => {
+                                  const newValues = {
+                                    ...variableValues,
+                                    [`section_${section}_${index}_${variable}`]: e.target.value
+                                  };
+                                  setVariableValues(newValues);
+                                  clearTimeout(window._sectionUpdateTimer);
+                                  window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
+                                }}
+                              />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    }
+                    return null;
+                  })()}
                   
-                  {/* Textos */}
-                  {categorizedVariables.section[section].texts.length > 0 && (
-                    <div className={styles.variableCategory}>
-                      <h5>Textos</h5>
-                      {categorizedVariables.section[section].texts.map(variable => (
-                        <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
-                          <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
-                          <TextVariableInput 
-                            id={`section_${section}_${index}_${variable}`}
-                            value={variableValues[`section_${section}_${index}_${variable}`]}
-                            placeholder={`Texto para ${variable}`}
-                            onChange={(e) => {
-                              const newValues = {
-                                ...variableValues,
-                                [`section_${section}_${index}_${variable}`]: e.target.value
-                              };
-                              setVariableValues(newValues);
-                              clearTimeout(window._sectionUpdateTimer);
-                              window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
-                            }}
-                          />
+                  {/* Textos regulares (sin botones) */}
+                  {(() => {
+                    const regularTexts = categorizedVariables.section[section].texts.filter(
+                      variable => !variable.includes('BUTTON_PAIR_')
+                    );
+                    
+                    if (regularTexts.length > 0) {
+                      return (
+                        <div className={styles.variableCategory}>
+                          <h5>Textos</h5>
+                          {regularTexts.map(variable => (
+                            <div key={`${section}_${index}_${variable}`} className={styles.variableInput}>
+                              <label htmlFor={`section_${section}_${index}_${variable}`}>{variable}:</label>
+                              <TextVariableInput 
+                                id={`section_${section}_${index}_${variable}`}
+                                value={variableValues[`section_${section}_${index}_${variable}`]}
+                                placeholder={`Texto para ${variable}`}
+                                onChange={(e) => {
+                                  const newValues = {
+                                    ...variableValues,
+                                    [`section_${section}_${index}_${variable}`]: e.target.value
+                                  };
+                                  setVariableValues(newValues);
+                                  clearTimeout(window._sectionUpdateTimer);
+                                  window._sectionUpdateTimer = setTimeout(() => window.updateEmailPreview(), 300);
+                                }}
+                              />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    }
+                    return null;
+                  })()}
                 </>
               ) : (
                 // Vista fallback si no hay variables categorizadas
